@@ -1,0 +1,5 @@
+{
+  "name": "Digital Bodyguard AI",
+  "description": "An agentic cyber-guardian that monitors security threats, analyzes risks with Gemini 2.0 Flash, and automatically executes protective measures like account locking and key rotation.",
+  "requestFramePermissions": []
+}
