@@ -2,8 +2,14 @@
 import { GoogleGenAI, Type, FunctionDeclaration, GenerateContentResponse } from "@google/genai";
 import { SYSTEM_INSTRUCTION } from "../constants";
 
+// Check if running in production (Netlify) or development
+const isProduction = import.meta.env.PROD || false;
+const API_BASE_URL = isProduction ? '/.netlify/functions' : 'http://localhost:8888/.netlify/functions';
+
 // Initialize GoogleGenAI strictly using process.env.API_KEY as the only parameter in the configuration object
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = typeof process !== 'undefined' && process.env?.API_KEY 
+  ? new GoogleGenAI({ apiKey: process.env.API_KEY })
+  : null;
 
 const lockAccountDeclaration: FunctionDeclaration = {
   name: 'lock_user_account',
@@ -45,7 +51,30 @@ const triggerVoiceCallDeclaration: FunctionDeclaration = {
 };
 
 export const analyzeThreat = async (alertJson: any) => {
-  const model = 'gemini-3-flash-preview';
+  // If in production or AI not initialized, use serverless function
+  if (isProduction || !ai) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/analyze-threat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(alertJson),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error calling serverless function:', error);
+      throw error;
+    }
+  }
+
+  // Local development with direct AI call
+  const model = 'gemini-2.0-flash-exp';
   const response: GenerateContentResponse = await ai.models.generateContent({
     model,
     contents: [{ parts: [{ text: JSON.stringify(alertJson) }] }],
